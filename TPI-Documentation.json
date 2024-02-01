@@ -1,0 +1,642 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TPI Backend de aplicaciones",
+    "description": "Trabajo Práctico Integrador - Backend de Aplicaciones 2023\nEstamos trabajando en la implementación de un sistema de alquiler de bicicletas para una cierta ciudad.\n\nDe acuerdo a nuestro modelo, el sistema opera bajo los siguientes supuestos:\n\n  1. Llamamos cliente a quién está registrado en el sistema para alquilar bicicletas. Únicamente ellos pueden alquilar bicicletas.\n  2. Cada bicicleta que se alquila es retirada de una estación y devuelta en una estación distinta.\n  3. Asumimos que siempre hay una bicicleta disponible en cada estación y que toda estación tiene lugar disponible para una devolución.\n  4. El precio del alquiler se calcula en el momento de la devolución de la bicicleta y este precio se calcula bajo las siguientes reglas:\n      - Hay un costo fijo por realizar el alquiler y un costo por hora completa (Cuenta como hora completa a partir del minuto 31, antes de eso se tarifa fraccionado por minuto). Existe una tabla en la base de datos que se provee que indica cuáles son estos costos por cada día de la semana.\n      - Se cobra un monto adicional por cada KM que separe la estación de retiro de la estación de devolución. La base de datos provista contiene el precio adicional por KM. El cálculo de esta distancia se explica en las aclaraciones finales\n      - Para los días promocionales configurados en el sistema, se aplica un\n  porcentaje de descuento sobre el monto total del alquiler. Para que este\n  descuento se aplique, se considera que el retiro de la bicicleta se hizo en el\n  día promocional. La base de datos provista contiene los días que se\n  consideran de descuento y el descuento aplicable.\n5.  Al momento de la devolución, el cliente decide en qué moneda se le va a mostrar el importe adeudado. Por defecto el monto se muestra en Pesos Argentinos, pero puede expresarse en cualquier otra moneda soportada por el sistema.\n\nSe solicita desarrollar un backend, compuesto por microservicios, que exponga un API REST (con representación en JSON) para soportar, mínimamente, las siguientes funcionalidades:\n  1. Consultar el listado de todas las estaciones disponibles en la ciudad\n  2. Consultar los datos de la estación más cercana a una ubicación provista por el cliente.\n  3. Iniciar el alquiler de una bicicleta desde una estación dada\n  4. Finalizar un alquiler en curso, informando los datos del mismo y el costo expresado en la moneda que el cliente desee. La moneda puede ser elegida en el momento de finalizar el alquiler y, en caso de no hacerlo, el monto se expresa en pesos argentinos.\n  5. Agregar una nueva estación al sistema\n  6. Obtener un listado de los alquileres realizados aplicando, por lo menos, un filtro.\n\nTener en cuenta que:\n  - El backend debe presentar un único punto de entrada (debe exponer todos los endpoints en el mismo puerto), para lo que deberá implementar un API Gateway\n  - Con este enunciado se entrega una base de datos como base para utilizar en el mismo\n  - Las llamadas a los distintos endpoints únicamente deben ser permitidas para clientes autenticados.    Para esto, se consideran únicamente dos roles:\n      - Administrador\n          ■ Puede agregar nuevas estaciones\n          ■ Puede obtener listados sobre los alquileres realizados\n      - Cliente\n          ■ Puede realizar consultas sobre las estaciones, realizar alquileres y devoluciones.\n  - Para el desarrollo de este trabajo práctico, será necesario un trabajo de investigación básico sobre manejo de Fecha/Hora en Java. La recomendación es investigar el uso de las clases del paquete java.time\n  - Se considerará, en la evaluación, el uso correcto de los códigos de respuesta HTTP\n  -Todos los endpoints que se generen deben estar documentados utilizando Swagger\n  - Para calcular la distancia entre dos estaciones, se considerará simplemente la distancia euclídea entre ambos puntos y cada grado corresponderá a 110000 m. Se aclara que este cálculo no es correcto, pero es suficiente para los fines de este Trabajo Práctico.\n  - Este trabajo se acompaña por un foro, cuya finalidad exclusiva es evacuar dudas sobre este trabajo práctico. Las respuestas brindadas en el foro por los docentes de la cátedra tienen tanta validez como lo enunciado aquí.\n\n\n\n\n[GRUPO 127 REPOSITORIO](https://github.com/swagger-api/swagger-petstore)",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/"
+    }
+  ],
+  "tags": [
+    {
+      "name": "estacion",
+      "description": "Estaciones disponibles en el sistema"
+    },
+    {
+      "name": "alquiler",
+      "description": "Transacciones de alquileres en el sistema"
+    }
+  ],
+  "paths": {
+    "/microservicio/estaciones/agregar": {
+      "post": {
+        "tags": [
+          "estacion"
+        ],
+        "summary": "Añadir una nueva estación al sistema",
+        "description": "Añadir una nueva estación al sistema",
+        "operationId": "addEstacion",
+        "requestBody": {
+          "description": "Crear una nueva estación",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Estacion"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/Estacion"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Estacion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estacion"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estacion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "tpi_auth": [
+              "write:estaciones",
+              "read:estaciones"
+            ]
+          }
+        ]
+      }
+    },
+    "/microservicio/estaciones/listado": {
+      "get": {
+        "tags": [
+          "estacion"
+        ],
+        "summary": "Obtener el listado de todas las estaciones",
+        "operationId": "findPetsByStatus",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Estacion"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Estacion"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status value"
+          }
+        },
+        "security": [
+          {
+            "tpi_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/microservicio/estaciones/{id}": {
+      "get": {
+        "tags": [
+          "estacion"
+        ],
+        "summary": "Buscar estación por id",
+        "operationId": "findEstacionById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Tags to filter by",
+            "required": true,
+            "explode": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Estacion"
+                  }
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Estacion"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid tag value"
+          }
+        },
+        "security": [
+          {
+            "tpi_auth": [
+              "write:estaciones",
+              "read:estaciones"
+            ]
+          }
+        ]
+      }
+    },
+    "/microservicio/estaciones/cercana": {
+      "get": {
+        "tags": [
+          "estacion"
+        ],
+        "summary": "Encontrar estación mas cercana segun latitud y longitud",
+        "description": "Retorna una unica estacion",
+        "operationId": "getNearestEstation",
+        "parameters": [
+          {
+            "name": "latitud",
+            "in": "header",
+            "description": "coordenada de latitud",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "longitud",
+            "in": "header",
+            "description": "coordenada de longitud",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estacion"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estacion"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "tpi_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/microservicio/estaciones/{id1}/{id2}": {
+      "get": {
+        "tags": [
+          "estacion"
+        ],
+        "summary": "Obtener la distancia entre dos estaciones",
+        "description": "Returns a single pet",
+        "operationId": "getDistanciaEstaciones",
+        "parameters": [
+          {
+            "name": "id1",
+            "in": "path",
+            "description": "ID of pet to return",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "id2",
+            "in": "path",
+            "description": "ID of pet to return",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estacion"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estacion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied"
+          },
+          "404": {
+            "description": "Not founded"
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          },
+          {
+            "tpi_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/microservicio/estaciones/borrar/{id}": {
+      "delete": {
+        "tags": [
+          "estacion"
+        ],
+        "summary": "Borrar una estacion",
+        "operationId": "deleteEstacion",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid ID supplied"
+          },
+          "404": {
+            "description": "Not founded"
+          }
+        },
+        "security": [
+          {
+            "tpi_auth": [
+              "write:pets",
+              "read:pets"
+            ]
+          }
+        ]
+      }
+    },
+    "/microservio/alquileres/listado": {
+      "get": {
+        "tags": [
+          "alquiler"
+        ],
+        "summary": "Devuelve el listado de todos los alquileres",
+        "description": "Returns a map of status codes to quantities",
+        "operationId": "getInventory",
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int32"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/microservio/alquileres/nuevo": {
+      "post": {
+        "tags": [
+          "alquiler"
+        ],
+        "summary": "Iniciar un alquier",
+        "description": "Place a new order in the store",
+        "operationId": "placeOrder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Alquiler"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/Alquiler"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Alquiler"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Alquiler"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/microservio/alquileres/actualizar/{id}": {
+      "put": {
+        "tags": [
+          "alquiler"
+        ],
+        "summary": "Actualizar un alquiler",
+        "operationId": "updateAlquiler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Created user object",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Alquiler"
+              }
+            },
+            "application/xml": {
+              "schema": {
+                "$ref": "#/components/schemas/Alquiler"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Alquiler"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Alquiler"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Alquiler"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Estacion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 10
+          },
+          "latitud": {
+            "type": "number",
+            "example": -31.442961123175007
+          },
+          "longitud": {
+            "type": "number",
+            "example": -64.19409112111947
+          },
+          "nombre": {
+            "type": "string",
+            "example": "UTN"
+          }
+        },
+        "xml": {
+          "name": "estacion"
+        }
+      },
+      "Alquiler": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 1
+          },
+          "fecha_hora_retiro": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-11-21T02:12:26.389Z"
+          },
+          "tarifa": {
+            "type": "object",
+            "xml": {
+              "name": "tarifa",
+              "wrapped": false
+            },
+            "items": {
+              "$ref": "#/components/schemas/Tarifa"
+            }
+          },
+          "estacion_retiro": {
+            "type": "number",
+            "example": 100000
+          },
+          "estacion_devolucion": {
+            "type": "number",
+            "example": 100000
+          },
+          "monto": {
+            "type": "number",
+            "example": 135223.12327813974
+          },
+          "estado": {
+            "type": "number",
+            "example": 2
+          },
+          "id_cliente": {
+            "type": "string",
+            "example": 2
+          },
+          "divisa": {
+            "type": "string"
+          },
+          "fecha_hora_devolucion": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-11-21T13:29:17.303Z"
+          }
+        },
+        "xml": {
+          "name": "alquiler"
+        }
+      },
+      "Tarifa": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 2
+          },
+          "monto_hora": {
+            "type": "number",
+            "example": 240
+          },
+          "mes": {
+            "type": "number"
+          },
+          "tipo:_tarifa": {
+            "type": "number",
+            "example": 1
+          },
+          "dia_mes": {
+            "type": "string"
+          },
+          "anio": {
+            "type": "string"
+          },
+          "definicion": {
+            "type": "string",
+            "example": "S"
+          },
+          "monto_minuto_fraccion": {
+            "type": "number",
+            "example": 6
+          },
+          "dia_semana": {
+            "type": "number",
+            "example": 2
+          },
+          "monto_km": {
+            "type": "number",
+            "example": 80
+          },
+          "monto_fijo_alquiler": {
+            "type": "number",
+            "example": 300
+          }
+        },
+        "xml": {
+          "name": "tarifa"
+        }
+      }
+    },
+    "requestBodies": {
+      "Estacion": {
+        "description": "Estacion que necesita ser agregada al sistema",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Estacion"
+            }
+          },
+          "application/xml": {
+            "schema": {
+              "$ref": "#/components/schemas/Estacion"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "tpi_auth": {
+        "type": "oauth2",
+        "flows": {
+          "implicit": {
+            "authorizationUrl": "https://labsys.frc.utn.edu.ar/aim/realms/backend-tps/protocol/openid-connect/auth",
+            "scopes": {
+              "write:estacion": "modificar estaciones",
+              "read:estacion": "obtener estaciones"
+            }
+          }
+        }
+      },
+      "api_key": {
+        "type": "apiKey",
+        "name": "api_key",
+        "in": "header"
+      }
+    }
+  }
+}
